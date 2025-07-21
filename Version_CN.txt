@@ -1,0 +1,9 @@
+﻿# 版本更新说明
+
+本项目是基于 https://github.com/lmarzen/esp32-weather-epd 的分支，主要进行了以下修改：
+
+1. 将原有墨水屏更换为 EPD7in5B-V2 型号
+2. 修改了 SPI 引脚定义，与原工程有所不同
+3. 将 OpenWeatherMap API 从 3.0 OneCall 版本更改为 2.5 免费版本
+
+这些更改使项目能够在不同的硬件配置上运行，并且使用免费的 API 版本获取天气数据。

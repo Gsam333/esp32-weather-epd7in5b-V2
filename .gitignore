@@ -1,0 +1,26 @@
+# 忽略test目录
+/test/
+
+# 忽略敏感配置文件
+/include/secrets.h
+
+# 忽略编译输出
+.pio
+.vscode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.o
+*.a
+*.elf
+*.bin
+*.hex
+*.map
+
+# 忽略临时文件
+*.swp
+*.bak
+*~
+.DS_Store
+Thumbs.db
