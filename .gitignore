@@ -2,7 +2,7 @@
 /test/
 
 # 忽略敏感配置文件
-/include/secrets.h
+/src/include/secrets.h
 
 # 忽略编译输出
 .pio

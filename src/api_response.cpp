@@ -25,7 +25,7 @@ DeserializationError deserializeOneCall(WiFiClient &json,
   int i;
 
   // 使用更大的缓冲区来解析JSON
-  DynamicJsonDocument doc(65536); // 64KB
+  DynamicJsonDocument doc(131072); // 128KB，进一步增加缓冲区大小
 
   DeserializationError error = deserializeJson(doc, json);
 #if DEBUG_LEVEL >= 1
@@ -343,7 +343,7 @@ DeserializationError deserializeAirQuality(WiFiClient &json,
   int i = 0;
 
   // 使用更大的缓冲区来解析JSON
-  DynamicJsonDocument doc(16384); // 16KB
+  DynamicJsonDocument doc(32768); // 32KB，增加空气质量数据解析的缓冲区大小
 
   DeserializationError error = deserializeJson(doc, json);
 #if DEBUG_LEVEL >= 1

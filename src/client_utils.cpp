@@ -239,7 +239,8 @@ int getOWMonecall(WiFiClientSecure &client, owm_resp_onecall_t &r)
   bool rxSuccess = false;
   DeserializationError jsonErr = {};
   String uri = "/data/2.5/forecast?lat=" + LAT + "&lon=" + LON +
-               "&lang=" + OWM_LANG + "&units=standard";
+               "&lang=" + OWM_LANG +
+               "&units=standard&cnt=40"; // 获取完整的5天数据（40个数据点）
 
   // This string is printed to terminal to help with debugging. The API key is
   // censored to reduce the risk of users exposing their key.

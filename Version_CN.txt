@@ -1,9 +1,19 @@
-﻿# 版本更新说明
+﻿git commit -m "fork from lmarzen/esp32-weather-epd: 更换为EPD7in5B-V2墨水屏，修改SPI引脚定义，将OpenWeatherMap API从3.0 OneCall改为2.5免费版本"
 
-本项目是基于 https://github.com/lmarzen/esp32-weather-epd 的分支，主要进行了以下修改：
+git commit -m "修复 -258 Deserialization Incomplete Input 错误"
+- 问题描述：在使用 Forecast API 时，遇到 `-258 Deserialization Incomplete Input` 错误，导致无法解析 API 响应数据
+- 解决方案：
+  1. 增加 JSON 解析缓冲区大小：从 64KB 增加到 128KB
+  2. 增加空气质量数据解析的缓冲区大小：从 16KB 增加到 32KB
+  3. 增加 HTTP 客户端超时时间：从 10秒 增加到 30秒
+  4. 限制 Forecast API 返回的数据量：添加 cnt=40 参数，获取完整的5天数据（40个数据点）
+  5. 优化项目结构：将 include 目录移动到 src/include，改善代码组织
+  6. 更新 VSCode 和 PlatformIO 配置，确保正确的包含路径
+  7. 添加缺失的依赖库：Adafruit GFX Library @ 1.11.9
 
-1. 将原有墨水屏更换为 EPD7in5B-V2 型号
-2. 修改了 SPI 引脚定义，与原工程有所不同
-3. 将 OpenWeatherMap API 从 3.0 OneCall 版本更改为 2.5 免费版本
-
-这些更改使项目能够在不同的硬件配置上运行，并且使用免费的 API 版本获取天气数据。
+git commit -m "准备集成高德天气API"
+- 创建高德天气API集成规格文档，包括：
+  1. 需求文档：明确集成高德天气API的目标和要求
+  2. 设计文档：详细描述架构设计、数据结构和数据转换映射机制
+  3. 实现计划：将整个集成工作分解为可执行的任务列表
+- 设计了详细的数据转换映射机制，确保高德API数据能无缝对接到现有显示系统

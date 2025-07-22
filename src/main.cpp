@@ -28,6 +28,8 @@
 #include "client_utils.h"
 #include "config.h"
 #include "display_utils.h"
+#include "esp32-hal-gpio.h"
+#include "esp32-hal.h"
 #include "icons/icons_196x196.h"
 #include "renderer.h"
 
@@ -109,6 +111,15 @@ void beginDeepSleep(unsigned long startTime, tm *timeInfo) {
   printHeapUsage();
 #endif
 
+  // 强制进行垃圾回收，释放未使用的内存
+  ESP.getFreeHeap();
+
+  // 在进入深度睡眠前显示内存使用情况
+  Serial.println("清理内存并准备进入深度睡眠...");
+#if DEBUG_LEVEL >= 1
+  printHeapUsage();
+#endif
+
   esp_sleep_enable_timer_wakeup(sleepDuration * 1000000ULL);
   Serial.print(TXT_AWAKE_FOR);
   Serial.println(" " + String((millis() - startTime) / 1000.0, 3) + "s");
@@ -117,37 +128,15 @@ void beginDeepSleep(unsigned long startTime, tm *timeInfo) {
   esp_deep_sleep_start();
 } // end beginDeepSleep
 
-// LED1闪烁控制变量
-unsigned long previousMillis = 0;
-const long blinkInterval = 1500; // 1.5秒闪烁间隔
-bool ledState = false;
-bool isRequestingData = false;
-
-// LED1闪烁函数
-void blinkLED1() {
-  if (isRequestingData) {
-    // 发送GET请求时LED常亮
-    digitalWrite(PIN_LED1, HIGH);
-    return;
-  }
-
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= blinkInterval) {
-    previousMillis = currentMillis;
-    ledState = !ledState;
-    digitalWrite(PIN_LED1, ledState ? HIGH : LOW);
-  }
-}
-
 /* Program entry point.
  */
 void setup() {
   unsigned long startTime = millis();
   Serial.begin(115200);
 
-  // 初始化LED1
+  // 初始化LED1 - 默认关闭
   pinMode(PIN_LED1, OUTPUT);
-  digitalWrite(PIN_LED1, LOW);
+  digitalWrite(PIN_LED1, LOW); // 高电平关闭LED
 
 #if DEBUG_LEVEL >= 1
   printHeapUsage();
@@ -268,8 +257,8 @@ void setup() {
 
   // First try the current weather API (2.5/weather) - your preferred API
   Serial.println("Trying Current Weather API (2.5/weather) first...");
-  isRequestingData = true;      // 设置为请求数据状态，LED常亮
-  digitalWrite(PIN_LED1, HIGH); // 立即点亮LED
+  Serial.println("LED is on");
+  // digitalWrite(PIN_LED1, LOW); // 低电平点亮LED
   int currentWeatherStatus = getOWMcurrentWeather(client, owm_onecall.current);
 
   // Then try Forecast API for forecast data
@@ -311,9 +300,6 @@ void setup() {
                    "2.5/weather API.");
   }
   rxStatus = getOWMairpollution(client, owm_air_pollution);
-
-  // 所有API请求完成，设置LED为闪烁模式
-  isRequestingData = false;
 
   if (rxStatus != HTTP_CODE_OK) {
     killWiFi();
@@ -396,16 +382,8 @@ void setup() {
   } while (display.nextPage());
   powerOffDisplay();
 
-  // 在进入深度睡眠前，让LED闪烁一段时间（例如10秒）
-  Serial.println("LED will blink for 10 seconds before deep sleep");
-  unsigned long blinkStartTime = millis();
-  while (millis() - blinkStartTime < 10000) { // 闪烁10秒
-    blinkLED1();
-    delay(50); // 短暂延迟，不影响闪烁效果
-  }
-
   // 关闭LED
-  digitalWrite(PIN_LED1, LOW);
+  digitalWrite(PIN_LED1, HIGH); // 高电平关闭LED
 
   // DEEP SLEEP
   beginDeepSleep(startTime, &timeInfo);
@@ -414,6 +392,6 @@ void setup() {
 /* This will never run, but if it did (例如在调试模式下)，我们也会让LED闪烁
  */
 void loop() {
-  blinkLED1();
-  delay(50); // 短暂延迟，不影响闪烁效果
+  // digitalWrite(PIN_LED1, !digitalRead(PIN_LED1));
+  // delay(1500);
 } // end loop
