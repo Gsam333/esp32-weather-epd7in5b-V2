@@ -1,0 +1,57 @@
+# Serena项目配置模板
+project:
+  name: "{PROJECT_NAME}"
+  type: "{PROJECT_TYPE}"
+  language: "{MAIN_LANGUAGE}"
+  platform: "{PLATFORM}"
+  framework: "{FRAMEWORK}"
+  created: "{CREATED_DATE}"
+  root_path: "{PROJECT_PATH}"
+
+  description: "基于{FRAMEWORK}的{PROJECT_TYPE}项目"
+
+# 代码分析配置
+analysis:
+  focus_files:
+    - "src/**/*"
+    - "lib/**/*"
+    - "include/**/*"
+    - "*.py"
+    - "*.js"
+    - "*.ts"
+    - "*.rs"
+    - "*.go"
+    - "*.java"
+    - "*.cpp"
+    - "*.h"
+
+  exclude_patterns:
+    - "build/**"
+    - "dist/**"
+    - "node_modules/**"
+    - "target/**"
+    - ".git/**"
+    - ".pio/**"
+    - ".vscode/**"
+    - "*.tmp"
+    - "*.bak"
+
+# 知识库配置
+knowledge_base:
+  path: ".kiro/serena/knowledge/"
+  auto_update: true
+  version_control: true
+
+  categories:
+    - "architecture"
+    - "components"
+    - "apis"
+    - "troubleshooting"
+    - "best_practices"
+
+# 输出配置
+output:
+  analysis_dir: ".kiro/serena/analysis/"
+  templates_dir: ".kiro/serena/templates/"
+  reports_dir: ".kiro/serena/reports/"
+  cache_dir: ".kiro/serena/cache/"

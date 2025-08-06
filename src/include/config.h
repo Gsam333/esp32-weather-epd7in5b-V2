@@ -45,6 +45,8 @@
 // INDOOR ENVIRONMENT SENSOR
 // Uncomment the macro that identifies your sensor.
 #define SENSOR_BME280
+#define SENSOR_BMP280
+#define SENSOR_AHT20
 // #define SENSOR_BME680
 
 // 3 COLOR E-INK ACCENT COLOR
@@ -258,7 +260,7 @@
 //   You may choose to power your weather display with or without a battery.
 //   Low power behavior can be controlled in config.cpp.
 //   If you wish to disable battery monitoring set this macro to 0.
-#define BATTERY_MONITORING 1
+#define BATTERY_MONITORING 0
 
 // NON-VOLATILE STORAGE (NVS) NAMESPACE
 #define NVS_NAMESPACE "weather_epd"
@@ -273,7 +275,17 @@
 // DEBUG MODE - Skip hardware checks for development
 //   When enabled, skips battery monitoring and sensor initialization
 //   *This allows testing without battery or BME280 sensor connected*
-#define DEBUG_MODE_SKIP_HARDWARE 1
+#define DEBUG_MODE_SKIP_HARDWARE 0
+
+// MQTT OTA UPGRADE
+//   When enabled, adds MQTT-based Over-The-Air (OTA) upgrade functionality
+//   The device will check for upgrade messages on MQTT after WiFi connection
+//   Set to 1 to enable, 0 to disable (saves flash space and power)
+#ifdef MQTT_OTA_UPGRADE
+#define MQTT_OTA_ENABLED 1
+#else
+#define MQTT_OTA_ENABLED 0
+#endif
 
 // Set the below constants in "config.cpp"
 extern const uint8_t PIN_LED1;
@@ -321,6 +333,21 @@ extern const unsigned long VERY_LOW_BATTERY_SLEEP_INTERVAL;
 extern const uint32_t MAX_BATTERY_VOLTAGE;
 extern const uint32_t MIN_BATTERY_VOLTAGE;
 
+#ifdef MQTT_OTA_UPGRADE
+// MQTT OTA升级配置变量声明
+extern const char *MQTT_OTA_SERVER;
+extern const int MQTT_OTA_PORT;
+extern const char *MQTT_OTA_USERNAME;
+extern const char *MQTT_OTA_PASSWORD;
+extern const bool MQTT_OTA_USE_SSL;
+extern const int MQTT_OTA_CONNECTION_TIMEOUT;
+extern const int MQTT_OTA_MESSAGE_TIMEOUT;
+extern const int MQTT_OTA_MAX_RETRIES;
+extern const bool MQTT_OTA_ENABLE;
+extern const int MQTT_OTA_MIN_BATTERY_LEVEL;
+extern const bool MQTT_OTA_ALLOW_DOWNGRADE;
+#endif
+
 // CONFIG VALIDATION - DO NOT MODIFY
 #if !(defined(DISP_BW_V2) ^ defined(DISP_3C_B) ^ defined(DISP_7C_F) ^          \
       defined(DISP_BW_V1))
@@ -329,8 +356,9 @@ extern const uint32_t MIN_BATTERY_VOLTAGE;
 #if !(defined(DRIVER_WAVESHARE) ^ defined(DRIVER_DESPI_C02))
 #error Invalid configuration. Exactly one driver board must be selected.
 #endif
-#if !(defined(SENSOR_BME280) ^ defined(SENSOR_BME680))
-#error Invalid configuration. Exactly one sensor must be selected.
+#if !(defined(SENSOR_BME280) || defined(SENSOR_BMP280) ||                      \
+      defined(SENSOR_AHT20) || defined(SENSOR_BME680))
+#error Invalid configuration. At least one sensor must be selected.
 #endif
 #if !(defined(LOCALE))
 #error Invalid configuration. Locale not selected.

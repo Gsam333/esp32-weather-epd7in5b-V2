@@ -1,0 +1,35 @@
+# Serena项目配置文件
+project:
+  name: "esp32-weather-epd7in5b-V2"
+  type: "embedded"
+  language: "cpp"
+  framework: "arduino"
+  platform: "esp32"
+  path: "/Users/sanm/Documents/PlatformIO/Projects/esp32-weather-epd7in5b-V2"
+  created: "Wed Jul 30 19:19:06 CST 2025"
+  kb_language: "zh"
+
+# 分析配置
+analysis:
+  include_patterns:
+    - "*.cpp"
+    - "*.h"
+    - "*.c"
+    - "*.py"
+    - "*.js"
+    - "*.ts"
+    - "*.rs"
+    - "*.go"
+  exclude_patterns:
+    - "node_modules/**"
+    - ".git/**"
+    - "build/**"
+    - "dist/**"
+    - "__pycache__/**"
+
+# 知识库配置
+knowledge:
+  auto_update: true
+  include_code_examples: true
+  include_dependencies: true
+  language: "zh"

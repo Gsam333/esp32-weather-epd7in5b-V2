@@ -15,30 +15,33 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "config.h"
-#include <Adafruit_Sensor.h>
+// Standard Arduino and ESP32 libraries
 #include <Arduino.h>
 #include <Preferences.h>
 #include <WiFi.h>
 #include <Wire.h>
 #include <time.h>
 
-#include "_locale.h"
-#include "api_response.h"
-#include "client_utils.h"
-#include "config.h"
-#include "display_utils.h"
+// ESP32 specific headers
 #include "esp32-hal-gpio.h"
 #include "esp32-hal.h"
-#include "icons/icons_196x196.h"
-#include "renderer.h"
 
+// Third-party libraries
+#include <Adafruit_Sensor.h>
 #if defined(SENSOR_BME280)
 #include <Adafruit_BME280.h>
+#endif
+#if defined(SENSOR_BMP280)
+#include <Adafruit_BMP280.h>
+#endif
+#if defined(SENSOR_AHT20)
+#include <Adafruit_AHTX0.h>
 #endif
 #if defined(SENSOR_BME680)
 #include <Adafruit_BME680.h>
 #endif
+
+// WiFi security libraries
 #if defined(USE_HTTPS_WITH_CERT_VERIF) || defined(USE_HTTPS_WITH_CERT_VERIF)
 #include <WiFiClientSecure.h>
 #endif
@@ -46,7 +49,27 @@
 #include "cert.h"
 #endif
 
-// too large to allocate locally on stack
+// Project configuration and utilities
+#include "_locale.h"
+#include "api_response.h"
+#include "client_utils.h"
+#include "config.h"
+#include "display_utils.h"
+#include "renderer.h"
+
+// Icons and assets
+#include "icons/icons_196x196.h"
+
+// Optional features
+#ifdef MQTT_OTA_UPGRADE
+#include "mqtt_ota_manager.h"
+#endif
+
+// Sensor management modules
+#include "dual_sensor_manager.h"
+#include "sensor_power_manager.h"
+
+// Global variables - too large to allocate locally on stack
 static owm_resp_onecall_t owm_onecall;
 static owm_resp_air_pollution_t owm_air_pollution;
 
@@ -85,7 +108,7 @@ void beginDeepSleep(unsigned long startTime, tm *timeInfo) {
   if (desiredSleepSeconds - offsetSeconds < 120 ||
       offsetSeconds / (float)desiredSleepSeconds >
           0.95f) { // if we have a sleep time less than 2 minutes OR less 5%
-                   // SLEEP_DURATION,
+    // SLEEP_DURATION,
     // skip to next alignment
     sleepMinutes += SLEEP_DURATION;
   }
@@ -111,22 +134,36 @@ void beginDeepSleep(unsigned long startTime, tm *timeInfo) {
   printHeapUsage();
 #endif
 
-  // 强制进行垃圾回收，释放未使用的内存
+  // Force garbage collection to free unused memory
   ESP.getFreeHeap();
 
-  // 在进入深度睡眠前显示内存使用情况
-  Serial.println("清理内存并准备进入深度睡眠...");
+  // Display memory usage before entering deep sleep
+  Serial.println("Preparing for deep sleep...");
 #if DEBUG_LEVEL >= 1
   printHeapUsage();
 #endif
+
+  // Prepare sensor power management for deep sleep
+  sensorPowerManager.prepareForDeepSleep();
 
   esp_sleep_enable_timer_wakeup(sleepDuration * 1000000ULL);
   Serial.print(TXT_AWAKE_FOR);
   Serial.println(" " + String((millis() - startTime) / 1000.0, 3) + "s");
   Serial.print(TXT_ENTERING_DEEP_SLEEP_FOR);
   Serial.println(" " + String(sleepDuration) + "s");
+
+  // Add delay to allow time to view serial output
+  Serial.println("Waiting 10 seconds for serial output...");
+  for (int i = 10; i > 0; i--) {
+    Serial.print("Countdown: ");
+    Serial.print(i);
+    Serial.println("s");
+    delay(1000);
+  }
+  Serial.println("Entering deep sleep mode now");
+
   esp_deep_sleep_start();
-} // end beginDeepSleep
+}
 
 /* Program entry point.
  */
@@ -134,9 +171,21 @@ void setup() {
   unsigned long startTime = millis();
   Serial.begin(115200);
 
-  // 初始化LED1 - 默认关闭
+  // Wait for serial connection
+  delay(2000);
+
+  // Initialize sensor power management system
+  sensorPowerManager.wakeupFromDeepSleep();
+
+  Serial.println();
+  Serial.println("===========================================");
+  Serial.println("ESP32 Weather Display - BMP280+AHT20 Dual Sensor");
+  Serial.println("===========================================");
+  Serial.println();
+
+  // Initialize LED1 - turn on to indicate startup
   pinMode(PIN_LED1, OUTPUT);
-  digitalWrite(PIN_LED1, LOW); // 高电平关闭LED
+  digitalWrite(PIN_LED1, LOW);
 
 #if DEBUG_LEVEL >= 1
   printHeapUsage();
@@ -196,7 +245,7 @@ void setup() {
   }
 #elif DEBUG_MODE_SKIP_HARDWARE
   // DEBUG MODE: Skip battery monitoring
-  uint32_t batteryVoltage = 4200; // Simulate good battery voltage (4.2V)
+  uint32_t batteryVoltage = 4200;
   Serial.println("DEBUG MODE: Skipping battery monitoring - simulating 4200mv");
 #else
   uint32_t batteryVoltage = UINT32_MAX;
@@ -244,6 +293,46 @@ void setup() {
     beginDeepSleep(startTime, &timeInfo);
   }
 
+#ifdef MQTT_OTA_UPGRADE
+  // MQTT OTA UPGRADE CHECK
+  Serial.println("Checking for MQTT OTA upgrades...");
+
+  // 配置MQTT OTA
+  mqttOTAConfig.mqttServer = MQTT_OTA_SERVER;
+  mqttOTAConfig.mqttPort = MQTT_OTA_PORT;
+  mqttOTAConfig.mqttUsername = MQTT_OTA_USERNAME;
+  mqttOTAConfig.mqttPassword = MQTT_OTA_PASSWORD;
+  mqttOTAConfig.enableSSL = MQTT_OTA_USE_SSL;
+  mqttOTAConfig.connectionTimeout = MQTT_OTA_CONNECTION_TIMEOUT;
+  mqttOTAConfig.messageTimeout = MQTT_OTA_MESSAGE_TIMEOUT;
+  mqttOTAConfig.maxRetries = MQTT_OTA_MAX_RETRIES;
+  mqttOTAConfig.enableOTA = MQTT_OTA_ENABLE;
+  mqttOTAConfig.minBatteryLevel = MQTT_OTA_MIN_BATTERY_LEVEL;
+  mqttOTAConfig.allowDowngrade = MQTT_OTA_ALLOW_DOWNGRADE;
+
+  // 生成设备ID和topic
+  mqttOTAConfig.deviceId = "weather-display-" + WiFi.macAddress();
+  mqttOTAConfig.deviceId.replace(":", ""); // 移除MAC地址中的冒号
+  mqttOTAConfig.generateTopics();
+
+  // 初始化MQTT OTA管理器
+  if (mqttOTAManager.begin(&mqttOTAConfig)) {
+    // 检查升级（这个函数会在10秒内完成）
+    bool upgradeTriggered = mqttOTAManager.checkForUpgrade();
+
+    if (upgradeTriggered) {
+      // 如果升级被触发，设备会在升级完成后重启
+      // 这里的代码不会被执行到
+      Serial.println("OTA upgrade triggered, device will restart...");
+    } else {
+      Serial.println("No OTA upgrade available, continuing normal operation");
+    }
+  } else {
+    Serial.println(
+        "Failed to initialize MQTT OTA manager, continuing normal operation");
+  }
+#endif
+
   // MAKE API REQUESTS
 #ifdef USE_HTTP
   WiFiClient client;
@@ -257,8 +346,6 @@ void setup() {
 
   // First try the current weather API (2.5/weather) - your preferred API
   Serial.println("Trying Current Weather API (2.5/weather) first...");
-  Serial.println("LED is on");
-  // digitalWrite(PIN_LED1, LOW); // 低电平点亮LED
   int currentWeatherStatus = getOWMcurrentWeather(client, owm_onecall.current);
 
   // Then try Forecast API for forecast data
@@ -314,52 +401,107 @@ void setup() {
   }
   killWiFi(); // WiFi no longer needed
 
-  // GET INDOOR TEMPERATURE AND HUMIDITY, start BMEx80...
+  // GET INDOOR TEMPERATURE AND HUMIDITY
   float inTemp = NAN;
   float inHumidity = NAN;
+  float inPressure = NAN;
 
 #if DEBUG_MODE_SKIP_HARDWARE
-  // DEBUG MODE: Skip BME sensor initialization
-  Serial.println(
-      "DEBUG MODE: Skipping BME sensor - simulating 22.5°C, 45% humidity");
-  inTemp = 22.5;     // Simulate 22.5°C
-  inHumidity = 45.0; // Simulate 45% humidity
+  // DEBUG MODE: Skip sensor initialization
+  Serial.println("DEBUG MODE: Skipping sensors - simulating sensor data");
+  inTemp = 22.5;
+  inHumidity = 45.0;
+  inPressure = 101325.0;
 #else
-  pinMode(PIN_BME_PWR, OUTPUT);
-  digitalWrite(PIN_BME_PWR, HIGH);
-  TwoWire I2C_bme = TwoWire(0);
-  I2C_bme.begin(PIN_BME_SDA, PIN_BME_SCL, 100000); // 100kHz
+  // Use dual sensor management system
+  bool sensorInitSuccess = dualSensorManager.initialize();
+  bool dataReadSuccess = false;
 
-#if defined(SENSOR_BME280)
-  Serial.print(String(TXT_READING_FROM) + " BME280... ");
-  Adafruit_BME280 bme;
+  if (sensorInitSuccess) {
+    // Try to read sensor data with up to 3 retries
+    int retryCount = 0;
+    const int maxRetries = 3;
 
-  if (bme.begin(BME_ADDRESS, &I2C_bme)) {
-#endif
-#if defined(SENSOR_BME680)
-    Serial.print(String(TXT_READING_FROM) + " BME680... ");
-    Adafruit_BME680 bme(&I2C_bme);
-
-    if (bme.begin(BME_ADDRESS)) {
-#endif
-      inTemp = bme.readTemperature();  // Celsius
-      inHumidity = bme.readHumidity(); // %
-
-      // check if BME readings are valid
-      // note: readings are checked again before drawing to screen. If a reading
-      //       is not a number (NAN) then an error occurred, a dash '-' will be
-      //       displayed.
-      if (std::isnan(inTemp) || std::isnan(inHumidity)) {
-        statusStr = "BME " + String(TXT_READ_FAILED);
-        Serial.println(statusStr);
-      } else {
-        Serial.println(TXT_SUCCESS);
+    while (retryCount < maxRetries && !dataReadSuccess) {
+      if (retryCount > 0) {
+        Serial.printf("Retrying sensor data read (attempt %d)...\n",
+                      retryCount + 1);
+        delay(500); // Wait 500ms before retry
       }
-    } else {
-      statusStr = "BME " + String(TXT_NOT_FOUND); // check wiring
-      Serial.println(statusStr);
+
+      SensorData sensorData = dualSensorManager.readAllSensors();
+
+      // Check if at least one valid data point exists
+      bool hasValidData = sensorData.temperatureValid ||
+                          sensorData.humidityValid || sensorData.pressureValid;
+
+      if (hasValidData) {
+        dataReadSuccess = true;
+
+        // Map to original variables
+        if (sensorData.temperatureValid) {
+          inTemp = sensorData.temperature;
+          Serial.printf("Temperature: %.2f°C\n", inTemp);
+        } else {
+          Serial.println("Temperature data invalid, will display as '--'");
+        }
+
+        if (sensorData.humidityValid) {
+          inHumidity = sensorData.humidity;
+          Serial.printf("Humidity: %.2f%%\n", inHumidity);
+        } else {
+          Serial.println("Humidity data invalid, will display as '--'");
+        }
+
+        if (sensorData.pressureValid) {
+          inPressure = sensorData.pressure;
+          Serial.printf("Pressure: %.2f hPa\n", inPressure / 100.0);
+        } else {
+          Serial.println("Pressure data invalid");
+        }
+
+        Serial.println("Dual sensor data read completed");
+
+        // Clear any previous error status
+        if (!statusStr.isEmpty() && statusStr.indexOf("传感器") >= 0) {
+          statusStr = "";
+        }
+      } else {
+        retryCount++;
+        Serial.printf("Data read attempt %d failed, all sensor data invalid\n",
+                      retryCount);
+      }
     }
-    digitalWrite(PIN_BME_PWR, LOW);
+
+    if (!dataReadSuccess) {
+      statusStr = "Sensor data read failed";
+      Serial.println("Unable to read valid sensor data after multiple retries");
+    }
+  } else {
+    statusStr = "Sensor initialization failed";
+    Serial.println("Dual sensor system initialization failed");
+  }
+
+  // If dual sensor system completely fails, log the failure
+  if (!sensorInitSuccess || !dataReadSuccess) {
+    Serial.println(
+        "Dual sensor system failed, sensor data will show as invalid");
+  }
+
+  // Final data validation and status report
+  bool hasTempData = !std::isnan(inTemp);
+  bool hasHumidityData = !std::isnan(inHumidity);
+  bool hasPressureData = !std::isnan(inPressure);
+
+  Serial.println("Final sensor data status:");
+  Serial.printf("  Temperature: %s\n", hasTempData ? "Valid" : "Invalid");
+  Serial.printf("  Humidity: %s\n", hasHumidityData ? "Valid" : "Invalid");
+  Serial.printf("  Pressure: %s\n", hasPressureData ? "Valid" : "Invalid");
+
+  if (!hasTempData && !hasHumidityData && !hasPressureData) {
+    Serial.println("Warning: All sensor data invalid, display will show '--' "
+                   "placeholders");
+  }
 #endif
 
   String refreshTimeStr;
@@ -382,16 +524,13 @@ void setup() {
   } while (display.nextPage());
   powerOffDisplay();
 
-  // 关闭LED
-  digitalWrite(PIN_LED1, HIGH); // 高电平关闭LED
+  // Turn off LED
+  digitalWrite(PIN_LED1, HIGH);
 
   // DEEP SLEEP
   beginDeepSleep(startTime, &timeInfo);
-} // end setup
+}
 
-/* This will never run, but if it did (例如在调试模式下)，我们也会让LED闪烁
+/* This will never run in normal operation.
  */
-void loop() {
-  // digitalWrite(PIN_LED1, !digitalRead(PIN_LED1));
-  // delay(1500);
-} // end loop
+void loop() { delay(100); }

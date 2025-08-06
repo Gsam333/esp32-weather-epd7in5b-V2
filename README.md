@@ -20,6 +20,27 @@ A low-power weather display using a wifi-enabled ESP32 microcontroller and a 7.5
 
 - Easy recharging: USB-C charging with battery monitoring.
 
+- **GPIO Voltage Testing**: Built-in GPIO voltage level testing for ESP32-DevKitC-V4 hardware verification.
+
+## 🔬 GPIO Voltage Testing
+
+This project includes integrated GPIO voltage testing functionality to verify that ESP32-DevKitC-V4 GPIO pins output the correct 3.3V levels.
+
+### Quick Test
+1. Upload the program to ESP32-DevKitC-V4
+2. Open serial monitor
+3. Type `gpio_test` to start testing
+4. Use a multimeter to measure GPIO pins → GND (should read 3.3V ±0.1V)
+
+### Available Commands
+- `gpio_test` - Start GPIO voltage testing
+- `gpio_high` - Set test pins to HIGH (3.3V)
+- `gpio_low` - Set test pins to LOW (0V)
+- `gpio_stop` - Stop GPIO testing
+- `help` - Show command help
+
+For detailed testing instructions, see [GPIO_VOLTAGE_TEST.md](GPIO_VOLTAGE_TEST.md).
+
 The hourly outlook graph (bottom right) shows a line indicating temperature and shaded bars indicating probability of precipitation (or optionally volume of precipitation).
 
 Here are two (slightly outdated) examples utilizing various configuration options:

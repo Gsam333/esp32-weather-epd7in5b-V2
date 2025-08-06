@@ -11,9 +11,28 @@ git commit -m "修复 -258 Deserialization Incomplete Input 错误"
   6. 更新 VSCode 和 PlatformIO 配置，确保正确的包含路径
   7. 添加缺失的依赖库：Adafruit GFX Library @ 1.11.9
 
+git commit -m "优化项目结构和解决编译问题"
+- 项目结构优化：
+  1. 将根目录 include 文件夹移动到 src/include，改善代码组织结构
+  2. 删除 src/include 符号链接，创建实际目录
+  3. 更新 PlatformIO 配置：修改 build_flags 中的包含路径为 -I${PROJECT_DIR}/src/include
+  4. 更新 VSCode c_cpp_properties.json：修改 browse.path 指向新的包含路径
+  5. 更新 .gitignore：将敏感文件路径从 /include/secrets.h 改为 /src/include/secrets.h
+
+- 解决编译依赖问题：
+  1. 添加缺失的 Adafruit GFX Library @ 1.11.9 依赖
+  2. 解决 GxEPD2 库对 Adafruit_GFX.h 的依赖问题
+  3. 通过配置文件修改解决包含路径问题，避免修改每个源文件的 include 语句
+
+- 编译成功：
+  - RAM 使用率：31.9% (104668/327680 bytes)
+  - Flash 使用率：41.5% (1304697/3145728 bytes)
+  - 编译时间：33.40 秒
+
 git commit -m "准备集成高德天气API"
 - 创建高德天气API集成规格文档，包括：
   1. 需求文档：明确集成高德天气API的目标和要求
   2. 设计文档：详细描述架构设计、数据结构和数据转换映射机制
   3. 实现计划：将整个集成工作分解为可执行的任务列表
 - 设计了详细的数据转换映射机制，确保高德API数据能无缝对接到现有显示系统
+- 将规格文档从 .kiro/specs/amap-weather-api 移动到 tasks/amap-weather-api

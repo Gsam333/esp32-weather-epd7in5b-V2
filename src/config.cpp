@@ -56,8 +56,13 @@ const uint8_t PIN_EPD_PWR = 26;  // 与RST共用，如果直接连接到3.3V则�
 // I2C Pins used for BME280
 const uint8_t PIN_BME_SDA = 17;
 const uint8_t PIN_BME_SCL = 16;
-const uint8_t PIN_BME_PWR = 4;    // Irrelevant if directly connected to 3.3V
-const uint8_t BME_ADDRESS = 0x76; // 0x76 if SDO -> GND; 0x77 if SDO -> VCC
+const uint8_t PIN_BME_PWR = 4; // Irrelevant if directly connected to 3.3V
+const uint8_t BME_ADDRESS = 0x76;
+// 0x76 if SDO -> GND; 0x77 if SDO -> VCC
+// CSB  ->   3.3V
+// 芯片选择引脚必须接VCC以启用I2C模式，接GND会切换到SPI模式）
+// SDO  ->   GND
+// 设备地址选择引脚（接GND，对应工程中定义的0x76地址）
 
 // WIFI
 const char *WIFI_SSID = SECRET_WIFI_SSID;
@@ -172,6 +177,30 @@ const unsigned long VERY_LOW_BATTERY_SLEEP_INTERVAL = 120; // (minutes)
 // Battery voltage calculations are based on a typical 3.7v LiPo.
 const uint32_t MAX_BATTERY_VOLTAGE = 4200; // (millivolts)
 const uint32_t MIN_BATTERY_VOLTAGE = 3000; // (millivolts)
+
+#ifdef MQTT_OTA_UPGRADE
+// MQTT OTA UPGRADE CONFIGURATION
+// These settings are used when MQTT_OTA_UPGRADE is defined in platformio.ini
+// MQTT服务器配置 - 从secrets.h读取敏感信息
+const char *MQTT_OTA_SERVER = SECRET_MQTT_OTA_SERVER;
+const int MQTT_OTA_PORT = SECRET_MQTT_OTA_PORT;
+const char *MQTT_OTA_USERNAME = SECRET_MQTT_OTA_USERNAME;
+const char *MQTT_OTA_PASSWORD = SECRET_MQTT_OTA_PASSWORD;
+const bool MQTT_OTA_USE_SSL = SECRET_MQTT_OTA_USE_SSL;
+
+// MQTT OTA连接配置
+const int MQTT_OTA_CONNECTION_TIMEOUT = 5000; // MQTT连接超时 (ms)
+const int MQTT_OTA_MESSAGE_TIMEOUT = 10000;   // 消息等待超时 (ms)
+const int MQTT_OTA_MAX_RETRIES = 3;           // 最大重试次数
+
+// MQTT OTA升级配置
+const bool MQTT_OTA_ENABLE = true;           // 是否启用OTA功能
+const int MQTT_OTA_MIN_BATTERY_LEVEL = 30;   // 最低电池电量要求 (%)
+const bool MQTT_OTA_ALLOW_DOWNGRADE = false; // 是否允许版本降级
+
+// 注意：设备ID和topic将在运行时根据MAC地址自动生成
+// 格式：devices/weather-display-{MAC}/ota/upgrade
+#endif
 
 // See config.h for the below options
 // E-PAPER PANEL
