@@ -12,6 +12,8 @@
 /serena/
 /.serena/
 /.cache/
+/.kiro/
+*.sh
 
 # 版本文件
 Version_CN.txt

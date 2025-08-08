@@ -158,7 +158,7 @@ void DualSensorManager::scanI2CDevices() {
     Serial.println("🔍 请检查：");
     Serial.println("  - 硬件接线是否正确");
     Serial.println("  - 传感器是否已连接");
-    Serial.println("  - 电源是否正常 (GPIO4 = HIGH)");
+    Serial.println("  - 电源是否正常 (GPIO5 = HIGH)");
     Serial.println("  - I2C上拉电阻是否存在");
   }
 }

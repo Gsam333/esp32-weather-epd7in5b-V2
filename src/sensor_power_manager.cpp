@@ -18,7 +18,7 @@ bool SensorPowerManager::initialize() {
   // 释放可能存在的GPIO保持状态
   disableGPIOHold();
 
-  // 配置GPIO4为输出模式
+  // 配置GPIO5为输出模式
   pinMode(PIN_BME_PWR, OUTPUT);
 
   // 启用电源
@@ -42,7 +42,7 @@ void SensorPowerManager::enablePower() {
   // 等待电源稳定
   delay(50);
 
-  Serial.println("🔋 传感器电源已开启 (GPIO4 = HIGH, 3.3V)");
+  Serial.println("🔋 传感器电源已开启 (GPIO5 = HIGH, 3.3V)");
 }
 
 void SensorPowerManager::disablePower() {
@@ -53,7 +53,7 @@ void SensorPowerManager::disablePower() {
   powerEnabled = false;
   logPowerChange(false);
 
-  Serial.println("🔋 传感器电源已关闭 (GPIO4 = LOW, 0V)");
+  Serial.println("🔋 传感器电源已关闭 (GPIO5 = LOW, 0V)");
 }
 
 bool SensorPowerManager::isPowerEnabled() const { return powerEnabled; }
@@ -64,54 +64,53 @@ void SensorPowerManager::enableGPIOHold() {
     return;
   }
 
-  // 确保GPIO4为高电平
+  // 确保GPIO5为高电平
   setPowerPin(true);
 
   // 启用GPIO保持功能
-  gpio_hold_en(GPIO_NUM_4);
+  gpio_hold_en(GPIO_NUM_5);
   gpioHoldEnabled = true;
 
-  Serial.println("🔒 GPIO4保持功能已启用 (深度睡眠期间保持HIGH)");
+  Serial.println("🔒 GPIO5保持功能已启用 (深度睡眠期间保持HIGH)");
 }
 
 void SensorPowerManager::disableGPIOHold() {
-  gpio_hold_dis(GPIO_NUM_4);
+  gpio_hold_dis(GPIO_NUM_5);
   gpioHoldEnabled = false;
 
-  Serial.println("🔓 GPIO4保持功能已禁用");
+  Serial.println("🔓 GPIO5保持功能已禁用");
 }
 
 bool SensorPowerManager::isGPIOHoldEnabled() const { return gpioHoldEnabled; }
 
 void SensorPowerManager::prepareForDeepSleep() {
-  Serial.println("🌙 准备进入深度睡眠 - 配置传感器电源管理...");
+  Serial.println("🌙 准备进入深度睡眠 - 关闭传感器电源以节省功耗...");
 
-  // 确保电源开启
-  if (!powerEnabled) {
-    enablePower();
-  }
+  // 关闭传感器电源以节省功耗
+  disablePower();
 
-  // 启用GPIO保持功能
-  enableGPIOHold();
-
-  Serial.println("✅ 传感器电源管理已配置完成，可安全进入深度睡眠");
+  // 不使用gpio_hold_en，让GPIO5在深度睡眠期间自然保持LOW状态
+  Serial.println("✅ 传感器电源已关闭，GPIO5将在深度睡眠期间保持LOW状态");
 }
 
 void SensorPowerManager::wakeupFromDeepSleep() {
-  Serial.println("☀️  从深度睡眠唤醒 - 恢复传感器电源管理...");
+  Serial.println("☀️  从深度睡眠唤醒 - 重新给传感器供电...");
 
-  // 禁用GPIO保持功能
-  disableGPIOHold();
-
-  // 确保电源状态正确
+  // 配置GPIO5为输出模式
   pinMode(PIN_BME_PWR, OUTPUT);
+
+  // 重新给传感器供电
   enablePower();
+
+  // 给传感器稳定时间（50ms）
+  Serial.println("⏳ 等待传感器电源稳定...");
+  delay(50);
 
   // 验证电源状态
   if (validatePowerState()) {
-    Serial.println("✅ 传感器电源管理恢复成功");
+    Serial.println("✅ 传感器电源恢复成功，传感器需要重新初始化");
   } else {
-    Serial.println("⚠️  传感器电源状态异常，正在重新初始化...");
+    Serial.println("⚠️  传感器电源状态异常，正在重新初始化电源管理...");
     initialize();
   }
 }
@@ -124,7 +123,7 @@ float SensorPowerManager::getPowerVoltage() const {
 void SensorPowerManager::printStatus() const {
   Serial.println("📊 传感器电源管理状态：");
   Serial.printf("  电源状态: %s\n", powerEnabled ? "开启 ✅" : "关闭 ❌");
-  Serial.printf("  GPIO4电平: %.1fV\n", getPowerVoltage());
+  Serial.printf("  GPIO5电平: %.1fV\n", getPowerVoltage());
   Serial.printf("  GPIO保持: %s\n", gpioHoldEnabled ? "启用 🔒" : "禁用 🔓");
   Serial.printf("  引脚配置: GPIO%d (输出模式)\n", PIN_BME_PWR);
 
@@ -137,7 +136,7 @@ void SensorPowerManager::printStatus() const {
 }
 
 bool SensorPowerManager::testPowerPin() {
-  Serial.println("🔧 测试GPIO4电源引脚功能...");
+  Serial.println("🔧 测试GPIO5电源引脚功能...");
 
   // 测试高电平
   setPowerPin(true);

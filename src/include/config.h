@@ -260,7 +260,7 @@
 //   You may choose to power your weather display with or without a battery.
 //   Low power behavior can be controlled in config.cpp.
 //   If you wish to disable battery monitoring set this macro to 0.
-#define BATTERY_MONITORING 0
+#define BATTERY_MONITORING 1
 
 // NON-VOLATILE STORAGE (NVS) NAMESPACE
 #define NVS_NAMESPACE "weather_epd"

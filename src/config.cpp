@@ -28,10 +28,10 @@
 //       functionality.
 //
 // LED1 pin for status indication
-const uint8_t PIN_LED1 = 2; // IO2 pin for LED1
+const uint8_t PIN_LED1 = 2; // GPIO2 pin for LED1
 
 // ADC pin used to measure battery voltage
-const uint8_t PIN_BAT_ADC = A2; // A0 for micro-usb firebeetle
+const uint8_t PIN_BAT_ADC = 32; // GPIO32 for battery monitoring
 
 // Pins for E-Paper Driver Board
 // 原始项目配置 - 使用FireBeetle 2 ESP32-E的默认配置
@@ -53,10 +53,10 @@ const uint8_t PIN_EPD_SCK = 13;  // EPD_SCK_PIN 13
 const uint8_t PIN_EPD_MISO = 12; // 未在官方示例中使用，这里设置一个不冲突的引脚
 const uint8_t PIN_EPD_MOSI = 14; // EPD_MOSI_PIN 14
 const uint8_t PIN_EPD_PWR = 26;  // 与RST共用，如果直接连接到3.3V则不需要
-// I2C Pins used for BME280
-const uint8_t PIN_BME_SDA = 17;
-const uint8_t PIN_BME_SCL = 16;
-const uint8_t PIN_BME_PWR = 4; // Irrelevant if directly connected to 3.3V
+// I2C Pins used for BME280/BMP280/AHT20
+const uint8_t PIN_BME_SDA = 18;
+const uint8_t PIN_BME_SCL = 19;
+const uint8_t PIN_BME_PWR = 5; // GPIO5 for sensor power control
 const uint8_t BME_ADDRESS = 0x76;
 // 0x76 if SDO -> GND; 0x77 if SDO -> VCC
 // CSB  ->   3.3V

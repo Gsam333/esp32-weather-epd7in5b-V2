@@ -414,6 +414,8 @@ void setup() {
   inPressure = 101325.0;
 #else
   // Use dual sensor management system
+  // Note: Sensors need to be reinitialized after deep sleep wakeup since power
+  // was cut
   bool sensorInitSuccess = dualSensorManager.initialize();
   bool dataReadSuccess = false;
 

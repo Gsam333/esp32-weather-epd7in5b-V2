@@ -315,36 +315,51 @@ sequenceDiagram
 
 ### 优化方案
 
-#### 方案1: 持续供电 (推荐)
+#### 方案1: 深度睡眠时断电 (采用方案)
 ```cpp
-// 移除电源关闭逻辑
-// digitalWrite(PIN_BME_PWR, LOW);  // 删除这行
+void beginDeepSleep(unsigned long startTime, tm *timeInfo) {
+    Serial.println("准备进入深度睡眠，关闭传感器电源");
+    
+    // 关闭传感器电源以节省功耗
+    digitalWrite(PIN_BME_PWR, LOW);
+    
+    // 不需要gpio_hold_en，让GPIO4自然保持LOW状态
+    esp_sleep_enable_timer_wakeup(sleepDuration * 1000000ULL);
+    esp_deep_sleep_start();
+}
 
-// 保持GPIO4持续高电平
-// 传感器在深度睡眠期间也保持供电
+void setup() {
+    // 唤醒后重新给传感器供电
+    pinMode(PIN_BME_PWR, OUTPUT);
+    digitalWrite(PIN_BME_PWR, HIGH);
+    
+    // 给传感器稳定时间
+    delay(50);  // 50ms稳定时间
+    
+    // 重新初始化传感器
+    sensorManager.initialize();
+}
 ```
 
 **优势**:
-- 传感器状态稳定
-- 无需重复初始化
-- 代码逻辑简化
-- 数据读取更可靠
+- 深度睡眠期间完全断电，节省~2.35μA功耗
+- 对于30分钟睡眠周期，功耗节省显著
+- 逻辑简单，符合直觉
+- 适合长时间睡眠的应用场景
 
-**功耗影响**:
-- BMP280静态功耗: ~2.1μA
-- AHT20静态功耗: ~0.25μA
-- 总增加功耗: ~2.35μA (相对于深度睡眠的11μA，增加约21%)
+**权衡**:
+- 每次唤醒需要重新初始化传感器（~50ms）
+- 传感器上电后需要稳定时间
+- 需要确保初始化的可靠性
 
-#### 方案2: 智能电源管理
+#### 备用方案: 持续供电 (回滚选项)
 ```cpp
+// 如果断电方案有问题，可以回滚到持续供电
 void beginDeepSleep(unsigned long startTime, tm *timeInfo) {
-    // 在深度睡眠前保持传感器电源
-    // digitalWrite(PIN_BME_PWR, HIGH);  // 确保电源开启
-    
-    // 配置GPIO4在深度睡眠期间保持高电平
+    // 保持传感器电源
+    digitalWrite(PIN_BME_PWR, HIGH);
     gpio_hold_en(GPIO_NUM_4);
     
-    esp_sleep_enable_timer_wakeup(sleepDuration * 1000000ULL);
     esp_deep_sleep_start();
 }
 ```
@@ -382,26 +397,36 @@ if (sensorManager.initialize()) {
 ### 2. 深度睡眠GPIO状态管理
 
 ```cpp
-// 新增: 深度睡眠前的GPIO状态保持
+// 新增: 深度睡眠前关闭传感器电源
 void beginDeepSleep(unsigned long startTime, tm *timeInfo) {
-    // 确保传感器电源在深度睡眠期间保持开启
-    digitalWrite(PIN_BME_PWR, HIGH);
+    Serial.println("准备进入深度睡眠，关闭传感器电源");
     
-    // 使用GPIO保持功能，确保深度睡眠期间GPIO4保持高电平
-    gpio_hold_en(GPIO_NUM_4);
+    // 关闭传感器电源以节省功耗
+    digitalWrite(PIN_BME_PWR, LOW);
     
-    // ... 原有的深度睡眠逻辑
+    // 不使用gpio_hold_en，让GPIO4在深度睡眠期间保持LOW状态
+    esp_sleep_enable_timer_wakeup(sleepDuration * 1000000ULL);
     esp_deep_sleep_start();
 }
 
-// 新增: 唤醒后的GPIO状态恢复
+// 新增: 唤醒后重新给传感器供电和初始化
 void setup() {
-    // 释放GPIO保持状态
-    gpio_hold_dis(GPIO_NUM_4);
+    Serial.begin(115200);
     
-    // 确保GPIO4为高电平
+    // 重新给传感器供电
     pinMode(PIN_BME_PWR, OUTPUT);
     digitalWrite(PIN_BME_PWR, HIGH);
+    Serial.println("传感器电源已开启");
+    
+    // 给传感器稳定时间
+    delay(50);  // 50ms稳定时间
+    
+    // 重新初始化传感器
+    if (sensorManager.initialize()) {
+        Serial.println("传感器重新初始化成功");
+    } else {
+        Serial.println("传感器重新初始化失败");
+    }
     
     // ... 其他初始化代码
 }

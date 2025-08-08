@@ -15,12 +15,13 @@
     - 添加电源状态监控功能
     - _需求: 1.1, 1.2, 1.3, 1.4_
 
-  - [x] 2.2 实现深度睡眠期间GPIO4状态保持
-    - 在beginDeepSleep函数中添加gpio_hold_en(GPIO_NUM_4)
-    - 在setup函数开始时添加gpio_hold_dis(GPIO_NUM_4)
-    - 确保深度睡眠期间GPIO4保持HIGH电平
-    - 验证传感器在深度睡眠期间持续供电
-    - _需求: 1.1, 1.2, 1.3_
+  - [x] 2.2 实现深度睡眠功耗优化
+    - 修改beginDeepSleep函数，在进入深度睡眠前设置GPIO4为LOW
+    - 移除gpio_hold_en逻辑，让GPIO4在深度睡眠期间自然保持LOW状态
+    - 在setup函数中添加传感器重新供电逻辑
+    - 添加传感器稳定时间延迟（50ms）
+    - 确保唤醒后传感器能够重新初始化成功
+    - _需求: 1.4, 1.5, 1.6_
 
   - [x] 2.3 创建传感器电源管理模块
     - 实现SensorPowerManager类
@@ -173,11 +174,27 @@
     - 传感器数据准确性验证
     - _需求: 4.2, 4.3_ -->
 
-- [ ] 8. 文档更新
-  - [ ] 8.1 更新技术文档
+- [ ] 8. 功耗优化验证和回滚准备
+  - [ ] 8.1 验证深度睡眠断电方案
+    - 测试传感器在唤醒后能否正常重新初始化
+    - 验证传感器数据读取的准确性和稳定性
+    - 测量深度睡眠期间的实际功耗节省
+    - 进行多次深度睡眠/唤醒循环测试
+    - _需求: 1.4, 1.5, 1.6_
+
+  - [ ] 8.2 准备回滚方案（如果断电方案有问题）
+    - 保存当前工作的持续供电代码版本
+    - 创建快速回滚到gpio_hold_en方案的代码
+    - 文档化两种方案的切换步骤
+    - 准备功耗对比测试数据
+    - _需求: 1.1, 1.2, 1.3_
+
+- [ ] 9. 文档更新
+  - [ ] 9.1 更新技术文档
     - 更新README.md中的传感器配置说明
     - 创建传感器集成指南
     - 更新硬件连接图
+    - 添加功耗优化说明
     - _需求: 所有需求_
 <!-- 
   - [ ] 8.2 创建调试指南
@@ -193,26 +210,36 @@
 // 关键修改1：移除这行代码（位置：src/main.cpp:448）
 // digitalWrite(PIN_BME_PWR, LOW);  // 删除或注释掉
 
-// 关键修改2：深度睡眠前保持GPIO4状态
+// 关键修改2：深度睡眠前关闭传感器电源
 void beginDeepSleep(unsigned long startTime, tm *timeInfo) {
-    // 确保传感器电源在深度睡眠期间保持开启
-    digitalWrite(PIN_BME_PWR, HIGH);
+    Serial.println("准备进入深度睡眠，关闭传感器电源");
     
-    // 使用GPIO保持功能，确保深度睡眠期间GPIO4保持高电平
-    gpio_hold_en(GPIO_NUM_4);
+    // 关闭传感器电源以节省功耗
+    digitalWrite(PIN_BME_PWR, LOW);
     
-    // ... 原有的深度睡眠逻辑
+    // 不使用gpio_hold_en，让GPIO4在深度睡眠期间保持LOW状态
+    esp_sleep_enable_timer_wakeup(sleepDuration * 1000000ULL);
     esp_deep_sleep_start();
 }
 
-// 关键修改3：唤醒后释放GPIO保持状态
+// 关键修改3：唤醒后重新给传感器供电和初始化
 void setup() {
-    // 释放GPIO保持状态
-    gpio_hold_dis(GPIO_NUM_4);
+    Serial.begin(115200);
     
-    // 确保GPIO4为高电平
+    // 重新给传感器供电
     pinMode(PIN_BME_PWR, OUTPUT);
-    digitalWrite(PIN_BME_PWR, HIGH);  // 保持高电平
+    digitalWrite(PIN_BME_PWR, HIGH);
+    Serial.println("传感器电源已开启");
+    
+    // 给传感器稳定时间
+    delay(50);  // 50ms稳定时间
+    
+    // 重新初始化传感器
+    if (sensorManager.initialize()) {
+        Serial.println("传感器重新初始化成功");
+    } else {
+        Serial.println("传感器重新初始化失败");
+    }
     
     // ... 其他初始化代码
 }
